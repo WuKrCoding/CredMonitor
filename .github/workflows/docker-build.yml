@@ -40,4 +40,4 @@ jobs:
           file: ./Dockerfile
           push: true
           # 关键修改：使用 github.repository 变量（自动小写）
-          tags: ghcr.io/${{ github.repository | lower }}:latest
+          tags: ghcr.io/wukrcoding/credmonitor:latest
