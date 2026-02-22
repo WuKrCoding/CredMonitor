@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CredMonitor - 证书过期监控</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger-color: #dc2626;
+            --warning-color: #f59e0b;
+            --success-color: #10b981;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background-color: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-card h1 {
+            text-align: center;
+            color: var(--gray-900);
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+
+        .auth-card .subtitle {
+            text-align: center;
+            color: var(--gray-600);
+            margin-bottom: 32px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--gray-700);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--gray-300);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .auth-links {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .auth-links a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-error {
+            background-color: #fee2e2;
+            color: var(--danger-color);
+            border: 1px solid #fecaca;
+        }
+
+        .alert-success {
+            background-color: #d1fae5;
+            color: var(--success-color);
+            border: 1px solid #a7f3d0;
+        }
+
+        /* Dashboard Styles */
+        .dashboard-container {
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white;
+            box-shadow: var(--shadow);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-link {
+            color: var(--gray-600);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .toolbar h1 {
+            font-size: 24px;
+            color: var(--gray-900);
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 24px;
+        }
+
+        .cards-grid.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 24px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s, opacity 0.2s, margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: grab;
+            position: relative;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card.dragging {
+            opacity: 0.4;
+            transform: scale(1.05) rotate(1deg);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            z-index: 1000;
+            cursor: grabbing;
+        }
+
+        .card.drag-over {
+            border: 2px dashed var(--primary-color);
+            transform: scale(1.03);
+            margin-left: 8px;
+            margin-right: 8px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .domain-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-900);
+            word-break: break-all;
+        }
+
+        .domain-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        .badge-dns {
+            background-color: #dbeafe;
+            color: var(--primary-color);
+        }
+
+        .badge-ip {
+            background-color: #fef3c7;
+            color: var(--warning-color);
+        }
+
+        .badge-cname {
+            background-color: #d1fae5;
+            color: var(--success-color);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .card-actions button {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .info-label {
+            color: var(--gray-600);
+        }
+
+        .info-value {
+            font-weight: 500;
+            color: var(--gray-900);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .status-valid {
+            background-color: var(--success-color);
+        }
+
+        .status-warning {
+            background-color: var(--warning-color);
+        }
+
+        .status-critical {
+            background-color: var(--danger-color);
+        }
+
+        .status-expired {
+            background-color: var(--gray-900);
+        }
+
+        .status-error {
+            background-color: var(--gray-600);
+        }
+
+        .status-unknown {
+            background-color: var(--gray-400);
+        }
+
+        .progress-container {
+            margin-top: 16px;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background-color: var(--gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .issuer-info {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--gray-200);
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+
+        .issuer-info-row {
+            display: flex;
+            margin-bottom: 6px;
+            line-height: 1.4;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .issuer-info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .issuer-info-label {
+            font-weight: 500;
+            color: var(--gray-700);
+            flex-shrink: 0;
+            text-align: left;
+        }
+
+        .issuer-info-value {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--gray-600);
+            text-align: right;
+            max-width: calc(100% - 100px);
+        }
+
+        .filter-bar {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-600);
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .sort-select {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .sort-select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--gray-600);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            color: var(--gray-400);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray-600);
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .modal-close:hover {
+            color: var(--gray-900);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .modal-footer .btn {
+            width: auto;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--gray-300);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .auth-card {
+                padding: 24px;
+            }
+
+            .navbar {
+                padding: 12px 16px;
+            }
+
+            .navbar-content {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .main-content {
+                padding: 24px 16px;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .toolbar h1 {
+                text-align: center;
+            }
+
+            .toolbar-actions {
+                justify-content: center;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .card-actions {
+                width: 100%;
+            }
+
+            .card-actions button {
+                flex: 1;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .auth-card {
+                padding: 20px;
+            }
+
+            .auth-card h1 {
+                font-size: 24px;
+            }
+
+            .modal-content {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <div id="admin-status" data-is-admin="{{ 1 if is_admin else 0 }}" style="display: none;"></div>
+
+    <script>
+        const API_BASE = '/api';
+
+        function formatDateWithTime(dateStr) {
+            if (!dateStr) return '未知';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'valid': '#10b981',
+                'warning': '#f59e0b',
+                'critical': '#dc2626',
+                'expired': '#1f2937',
+                'error': '#6b7280',
+                'unknown': '#9ca3af'
+            };
+            return colors[status] || '#9ca3af';
+        }
+
+        function getStatusText(status) {
+            const texts = {
+                'valid': '正常',
+                'warning': '即将过期',
+                'expired': '已过期',
+                'error': '无法访问',
+                'unknown': '未知'
+            };
+            return texts[status] || '未知';
+        }
+
+        function getProgressColor(percentage) {
+            if (percentage < 10) return '#dc2626';
+            if (percentage < 30) return '#f97316';
+            if (percentage < 60) return '#f59e0b';
+            if (percentage < 80) return '#84cc16';
+            return '#10b981';
+        }
+
+        function showAlert(message, type = 'success') {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+
+            const container = document.querySelector('.auth-container') || document.querySelector('.main-content');
+            if (container) {
+                container.insertBefore(alert, container.firstChild);
+                setTimeout(() => alert.remove(), 3000);
+            }
+        }
+
+        function renderLogin() {
+            document.getElementById('app').innerHTML = `
+                <div class="auth-container">
+                    <div class="auth-card">
+                        <h1>CredMonitor</h1>
+                        <p class="subtitle">证书过期监控系统</p>
+                        <form id="loginForm">
+                            <div class="form-group">
+                                <label for="username">用户名</label>
+                                <input type="text" id="username" name="username" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">密码</label>
+                                <input type="password" id="password" name="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">登录</button>
+                        </form>
+                        <div class="auth-links">
+                            <p>还没有账号? <a href="/register">立即注册</a></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+
+                try {
+                    const response = await fetch('/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams(data)
+                    });
+
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                } catch (error) {
+                    showAlert('登录失败', 'error');
+                }
+            });
+        }
+
+        function renderRegister() {
+            document.getElementById('app').innerHTML = `
+                <div class="auth-container">
+                    <div class="auth-card">
+                        <h1>注册账号</h1>
+                        <p class="subtitle">创建新账号</p>
+                        <form id="registerForm">
+                            <div class="form-group">
+                                <label for="username">用户名</label>
+                                <input type="text" id="username" name="username" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">密码</label>
+                                <input type="password" id="password" name="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">注册</button>
+                        </form>
+                        <div class="auth-links">
+                            <p>已有账号? <a href="/login">立即登录</a></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('registerForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+
+                try {
+                    const response = await fetch('/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams(data)
+                    });
+
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                } catch (error) {
+                    showAlert('注册失败', 'error');
+                }
+            });
+        }
+
+        // 筛选和排序状态
+        let currentDomains = [];
+        let statusFilters = ['valid', 'warning', 'expired', 'error'];
+        let sortField = 'custom';
+        let sortOrder = 'asc';
+        let dashboardInitialized = false;
+        let dragSrcEl = null;
+        let dragSrcElId = null;
+        let isDragging = false;
+        let ghostElement = null;
+        let hasChangedPosition = false;
+        let isAdmin = false;
+
+        function applyFiltersAndSort(domains) {
+            // 筛选
+            let filtered = domains.filter(domain => {
+                return statusFilters.includes(domain.status);
+            });
+
+            // 如果是自定义排序，后端已经按sort_order排序，直接返回
+            if (sortField === 'custom') {
+                return filtered;
+            }
+
+            // 其他排序
+            filtered.sort((a, b) => {
+                let comparison = 0;
+                switch(sortField) {
+                    case 'created_at':
+                        comparison = (a.created_at || '').localeCompare(b.created_at || '');
+                        break;
+                    case 'expiry_date':
+                        if (!a.expiry_date && !b.expiry_date) comparison = 0;
+                        else if (!a.expiry_date) comparison = 1;
+                        else if (!b.expiry_date) comparison = -1;
+                        else comparison = new Date(a.expiry_date) - new Date(b.expiry_date);
+                        break;
+                    case 'percentage':
+                        comparison = a.percentage - b.percentage;
+                        break;
+                    case 'domain_name':
+                        comparison = a.domain_name.localeCompare(b.domain_name);
+                        break;
+                }
+                return sortOrder === 'asc' ? comparison : -comparison;
+            });
+
+            return filtered;
+        }
+
+        function renderDashboardFull(domains) {
+            currentDomains = domains;
+
+            const filteredDomains = applyFiltersAndSort(domains);
+            const isEmpty = filteredDomains.length === 0;
+
+            const domainsHtml = !isEmpty ? filteredDomains.map((domain, index) => `
+                <div class="card" data-id="${domain.id}" draggable="true" data-index="${index}">
+                    <div class="card-header">
+                        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                            <span style="cursor: grab; color: var(--gray-400);">⋮⋮</span>
+                            <span class="domain-name">${domain.domain_name}</span>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-danger btn-sm" onclick="deleteDomain(${domain.id})">删除</button>
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">连接方式</span>
+                        <span class="info-value">
+                            <span class="domain-badge badge-${domain.target_type}">${domain.target_type.toUpperCase()}</span>
+                            ${domain.target_value && domain.target_type !== 'dns' ? `<span style="color: var(--gray-600); margin-left: 8px;">${domain.target_value}</span>` : ''}
+                        </span>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">状态</span>
+                        <span class="info-value">
+                            <span class="status-indicator status-${domain.status}"></span>
+                            ${getStatusText(domain.status)}
+                        </span>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">发放时间</span>
+                        <span class="info-value">${formatDateWithTime(domain.start_date)}</span>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">到期时间</span>
+                        <span class="info-value">${formatDateWithTime(domain.expiry_date)}</span>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">剩余天数</span>
+                        <span class="info-value">${domain.days_remaining !== null ? domain.days_remaining + ' 天' : '未知'}</span>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-label">
+                            <span>剩余比例</span>
+                            <span>${domain.percentage.toFixed(1)}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${domain.percentage}%; background-color: ${getProgressColor(domain.percentage)};"></div>
+                        </div>
+                    </div>
+
+                    ${domain.issuer || domain.subject ? `
+                        <div class="issuer-info">
+                            <div class="issuer-info-row">
+                                <span class="issuer-info-label">证书主域名:</span>
+                                <span class="issuer-info-value" title="${domain.subject || '未知'}">${domain.subject || '未知'}</span>
+                            </div>
+                            <div class="issuer-info-row">
+                                <span class="issuer-info-label">签发机构:</span>
+                                <span class="issuer-info-value" title="${domain.issuer || '未知'}">${domain.issuer || '未知'}</span>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('') : `
+                <div class="empty-state">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                    </svg>
+                    <h3>还没有添加域名</h3>
+                    <p>点击上方"添加域名"按钮开始监控证书</p>
+                </div>
+            `;
+
+            document.getElementById('app').innerHTML = `
+                <div class="dashboard-container">
+                    <nav class="navbar">
+                        <div class="navbar-content">
+                            <div class="navbar-brand">CredMonitor</div>
+                            <div class="navbar-nav">
+                                <span style="color: var(--gray-600);">欢迎, ${window.username || '用户'}</span>
+                                <a href="/logout" class="nav-link">退出</a>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <main class="main-content">
+                        <div class="toolbar">
+                            <h1>证书监控${isAdmin ? ' <span style="font-size: 14px; color: var(--success-color); font-weight: normal;">(管理员)</span>' : ''}</h1>
+                            <div class="toolbar-actions">
+                                <button class="btn btn-primary" onclick="showAddModal()">
+                                    <span class="btn-text">添加域名</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="filter-bar">
+                            <div class="filter-group">
+                                <span class="filter-label">状态筛选:</span>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" value="valid" checked onchange="updateStatusFilter(this)">
+                                        <span>正常</span>
+                                    </label>
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" value="warning" checked onchange="updateStatusFilter(this)">
+                                        <span>即将过期</span>
+                                    </label>
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" value="expired" checked onchange="updateStatusFilter(this)">
+                                        <span>已过期</span>
+                                    </label>
+                                    <label class="checkbox-item">
+                                        <input type="checkbox" value="error" checked onchange="updateStatusFilter(this)">
+                                        <span>无法访问</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="filter-group">
+                                <span class="filter-label">排序:</span>
+                                <select class="sort-select" onchange="updateSort(this)">
+                                    <option value="custom-asc">自定义排序</option>
+                                    <option value="created_at-desc">添加时间 (新→旧)</option>
+                                    <option value="created_at-asc">添加时间 (旧→新)</option>
+                                    <option value="expiry_date-desc">到期时间 (远→近)</option>
+                                    <option value="expiry_date-asc">到期时间 (近→远)</option>
+                                    <option value="percentage-desc">剩余比例 (高→低)</option>
+                                    <option value="percentage-asc">剩余比例 (低→高)</option>
+                                    <option value="domain_name-asc">域名 (A→Z)</option>
+                                    <option value="domain_name-desc">域名 (Z→A)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="cards-grid${isEmpty ? ' empty' : ''}" id="domainsGrid">
+                            ${domainsHtml}
+                        </div>
+                    </main>
+                </div>
+
+                <div class="modal" id="addModal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 class="modal-title">添加域名</h2>
+                            <button class="modal-close" onclick="hideAddModal()">&times;</button>
+                        </div>
+                        <form id="addDomainForm">
+                            <div class="form-group">
+                                <label for="domainName">域名</label>
+                                <input type="text" id="domainName" name="domain_name" placeholder="example.com" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="targetType">解析方式</label>
+                                <select id="targetType" name="target_type" onchange="toggleTargetValue()">
+                                    <option value="dns">DNS解析</option>
+                                    <option value="ip">指定IP</option>
+                                    <option value="cname">指定CNAME</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="targetValueGroup" style="display: none;">
+                                <label for="targetValue" id="targetValueLabel">IP地址</label>
+                                <input type="text" id="targetValue" name="target_value" placeholder="">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="hideAddModal()">取消</button>
+                                <button type="submit" class="btn btn-primary">添加</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+
+            window.username = document.querySelector('.navbar-nav span').textContent.split(', ')[1];
+            dashboardInitialized = true;
+
+            // 初始化拖拽功能
+            setTimeout(() => {
+                initDragAndDrop();
+            }, 100);
+        }
+
+        function updateDomainsGrid() {
+            const filteredDomains = applyFiltersAndSort(currentDomains);
+            const domainsGrid = document.getElementById('domainsGrid');
+
+            if (!domainsGrid) return;
+
+            // 更新 cards-grid 的 class
+            if (filteredDomains.length === 0) {
+                domainsGrid.classList.add('empty');
+            } else {
+                domainsGrid.classList.remove('empty');
+            }
+
+            const domainsHtml = filteredDomains.length > 0 ? filteredDomains.map((domain, index) => `
+                <div class="card" data-id="${domain.id}" ${isAdmin ? 'draggable="true"' : ''} data-index="${index}">
+                    <div class="card-header">
+                        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                            ${isAdmin ? '<span style="cursor: grab; color: var(--gray-400);">⋮⋮</span>' : ''}
+                            <span class="domain-name">${domain.domain_name}</span>
+                        </div>
+                        <div class="card-actions">
+                            ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteDomain(${domain.id})">删除</button>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">连接方式</span>
+                        <span class="info-value">
+                            <span class="domain-badge badge-${domain.target_type}">${domain.target_type.toUpperCase()}</span>
+                            ${domain.target_value && domain.target_type !== 'dns' ? `<span style="color: var(--gray-600); margin-left: 8px;">${domain.target_value}</span>` : ''}
+                        </span>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">状态</span>
+                        <span class="info-value">
+                            <span class="status-indicator status-${domain.status}"></span>
+                            ${getStatusText(domain.status)}
+                        </span>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">发放时间</span>
+                        <span class="info-value">${formatDateWithTime(domain.start_date)}</span>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">到期时间</span>
+                        <span class="info-value">${formatDateWithTime(domain.expiry_date)}</span>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label">剩余天数</span>
+                        <span class="info-value">${domain.days_remaining !== null ? domain.days_remaining + ' 天' : '未知'}</span>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-label">
+                            <span>剩余比例</span>
+                            <span>${domain.percentage.toFixed(1)}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${domain.percentage}%; background-color: ${getProgressColor(domain.percentage)};"></div>
+                        </div>
+                    </div>
+
+                    ${domain.issuer || domain.subject ? `
+                        <div class="issuer-info">
+                            <div class="issuer-info-row">
+                                <span class="issuer-info-label">证书主域名:</span>
+                                <span class="issuer-info-value" title="${domain.subject || '未知'}">${domain.subject || '未知'}</span>
+                            </div>
+                            <div class="issuer-info-row">
+                                <span class="issuer-info-label">签发机构:</span>
+                                <span class="issuer-info-value" title="${domain.issuer || '未知'}">${domain.issuer || '未知'}</span>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('') : `
+                <div class="empty-state">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                    </svg>
+                    <h3>还没有添加域名</h3>
+                    <p>点击上方"添加域名"按钮开始监控证书</p>
+                </div>
+            `;
+
+            domainsGrid.innerHTML = domainsHtml;
+
+            // 初始化拖拽功能
+            initDragAndDrop();
+        }
+
+        function renderDashboard(domains) {
+            currentDomains = domains;
+
+            if (!dashboardInitialized) {
+                // 首次加载,渲染整个界面
+                renderDashboardFull();
+            } else {
+                // 已初始化,只更新卡片
+                updateDomainsGrid();
+            }
+        }
+
+        function toggleTargetValue() {
+            const type = document.getElementById('targetType').value;
+            const group = document.getElementById('targetValueGroup');
+            const label = document.getElementById('targetValueLabel');
+            const input = document.getElementById('targetValue');
+
+            if (type === 'dns') {
+                group.style.display = 'none';
+                input.removeAttribute('required');
+            } else if (type === 'ip') {
+                group.style.display = 'block';
+                label.textContent = 'IP地址';
+                input.placeholder = '192.168.1.1';
+                input.setAttribute('required', 'required');
+            } else if (type === 'cname') {
+                group.style.display = 'block';
+                label.textContent = 'CNAME记录';
+                input.placeholder = 'cdn.example.com';
+                input.removeAttribute('required');
+            }
+        }
+
+        function showAddModal() {
+            document.getElementById('addModal').classList.add('active');
+        }
+
+        function hideAddModal() {
+            document.getElementById('addModal').classList.remove('active');
+            document.getElementById('addDomainForm').reset();
+            document.getElementById('targetValueGroup').style.display = 'none';
+        }
+
+        async function loadDomains() {
+            try {
+                const response = await fetch(`${API_BASE}/domains`);
+                if (response.ok) {
+                    const domains = await response.json();
+                    currentDomains = domains;
+                    if (!dashboardInitialized) {
+                        renderDashboardFull(domains);
+                    } else {
+                        updateDomainsGrid();
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load domains:', error);
+            }
+        }
+
+        async         function checkAdminStatus() {
+            try {
+                isAdmin = window.isAdmin === true;
+            } catch (error) {
+                console.error('Failed to check admin status:', error);
+            }
+        }
+
+        function updateStatusFilter(checkbox) {
+            const value = checkbox.value;
+            if (checkbox.checked) {
+                if (!statusFilters.includes(value)) {
+                    statusFilters.push(value);
+                }
+            } else {
+                statusFilters = statusFilters.filter(v => v !== value);
+            }
+            updateDomainsGrid();
+        }
+
+        function updateSort(select) {
+            const [field, order] = select.value.split('-');
+            sortField = field;
+            sortOrder = order;
+            updateDomainsGrid();
+        }
+
+        // 拖拽功能实现
+        function initDragAndDrop() {
+            const grid = document.getElementById('domainsGrid');
+            if (!grid) return;
+
+            grid.addEventListener('dragover', handleGridDragOver, { passive: false });
+
+            const cards = grid.querySelectorAll('.card');
+            cards.forEach(card => {
+                if (isAdmin) {
+                    card.setAttribute('draggable', 'true');
+                    card.addEventListener('dragstart', handleDragStart);
+                    card.addEventListener('dragend', handleDragEnd);
+                    card.addEventListener('dragenter', handleCardDragEnter);
+                    card.addEventListener('dragleave', handleCardDragLeave);
+                }
+            });
+        }
+
+        function handleDragStart(e) {
+            if (!isAdmin) {
+                e.preventDefault();
+                showAlert('只有管理员可以拖拽卡片', 'error');
+                return;
+            }
+            if (sortField !== 'custom') {
+                e.preventDefault();
+                showAlert('请先切换到"自定义排序"模式才能拖拽卡片', 'error');
+                return;
+            }
+
+            dragSrcEl = e.target.closest('.card');
+            if (!dragSrcEl) return;
+
+            isDragging = true;
+            hasChangedPosition = false;
+            dragSrcEl.classList.add('dragging');
+
+            dragSrcElId = parseInt(dragSrcEl.getAttribute('data-id'));
+            const originalIndex = Array.from(document.querySelectorAll('.card')).indexOf(dragSrcEl);
+            dragSrcEl.dataset.originalIndex = originalIndex;
+
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(dragSrcElId));
+
+            // 创建拖拽时的幽灵元素
+            ghostElement = dragSrcEl.cloneNode(true);
+            ghostElement.style.position = 'fixed';
+            ghostElement.style.pointerEvents = 'none';
+            ghostElement.style.zIndex = '9999';
+            ghostElement.style.opacity = '0.9';
+            ghostElement.style.width = dragSrcEl.offsetWidth + 'px';
+            ghostElement.style.boxShadow = '0 10px 40px rgba(0,0,0,0.3)';
+            ghostElement.style.transform = 'scale(1.05)';
+            ghostElement.style.borderRadius = '12px';
+            document.body.appendChild(ghostElement);
+
+            e.dataTransfer.setDragImage(ghostElement, 20, 20);
+
+            console.log('开始拖拽，卡片ID:', dragSrcElId, '原始位置:', originalIndex);
+        }
+
+        function handleCardDragEnter(e) {
+            const target = e.target.closest('.card');
+            if (!target || target === dragSrcEl || !isDragging) return;
+
+            target.classList.add('drag-over');
+        }
+
+        function handleCardDragLeave(e) {
+            const target = e.target.closest('.card');
+            if (!target) return;
+
+            target.classList.remove('drag-over');
+        }
+
+        function handleGridDragOver(e) {
+            e.preventDefault();
+
+            const dropTarget = e.target.closest('.card');
+            if (!dropTarget || dropTarget === dragSrcEl || !isDragging) {
+                e.dataTransfer.dropEffect = 'none';
+                return;
+            }
+
+            const dropTargetId = parseInt(dropTarget.getAttribute('data-id'));
+            const grid = document.getElementById('domainsGrid');
+            const cards = Array.from(grid.querySelectorAll('.card'));
+
+            const srcCard = cards.find(card => parseInt(card.getAttribute('data-id')) === dragSrcElId);
+            const dropCard = cards.find(card => parseInt(card.getAttribute('data-id')) === dropTargetId);
+
+            if (srcCard && dropCard) {
+                const srcPos = cards.indexOf(srcCard);
+                const dropPos = cards.indexOf(dropCard);
+
+                if (srcPos !== -1 && dropPos !== -1 && srcPos !== dropPos) {
+                    hasChangedPosition = true;
+
+                    if (dropPos > srcPos) {
+                        dropCard.after(srcCard);
+                    } else {
+                        dropCard.before(srcCard);
+                    }
+
+                    console.log('位置变化:', srcPos, '->', dropPos);
+                }
+            }
+
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDragEnd(e) {
+            console.log('拖拽结束，hasChangedPosition:', hasChangedPosition);
+
+            // 无论位置是否改变，都尝试保存当前顺序
+            const grid = document.getElementById('domainsGrid');
+            const cards = Array.from(grid.querySelectorAll('.card'));
+            const currentOrder = cards.map(card => parseInt(card.getAttribute('data-id')));
+
+            console.log('当前DOM顺序:', currentOrder);
+
+            // 保存顺序到后端
+            saveDomainOrder(currentOrder);
+
+            // 同步更新 currentDomains
+            const newDomains = [];
+            currentOrder.forEach(id => {
+                const domain = currentDomains.find(d => d.id === id);
+                if (domain) newDomains.push(domain);
+            });
+            currentDomains = newDomains;
+
+            // 清理样式
+            if (dragSrcEl) {
+                dragSrcEl.classList.remove('dragging');
+                dragSrcEl.style.transform = '';
+                delete dragSrcEl.dataset.originalIndex;
+                dragSrcEl = null;
+            }
+
+            const allCards = document.querySelectorAll('.card');
+            allCards.forEach(card => {
+                card.classList.remove('drag-over');
+                card.style.transform = '';
+            });
+
+            if (ghostElement) {
+                ghostElement.remove();
+                ghostElement = null;
+            }
+
+            isDragging = false;
+            hasChangedPosition = false;
+            dragSrcElId = null;
+        }
+
+        async function saveDomainOrder(orderList) {
+            try {
+                console.log('发送保存请求:', orderList);
+
+                const response = await fetch(`${API_BASE}/domains/reorder`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order: orderList })
+                });
+
+                const result = await response.json();
+
+                console.log('保存结果:', result);
+
+                if (result.success) {
+                    console.log('域名顺序已保存');
+                } else {
+                    showAlert('保存顺序失败: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('保存顺序时出错:', error);
+                showAlert('保存顺序时出错', 'error');
+            }
+        }
+
+        async function addDomain(e) {
+            if (!isAdmin) {
+                showAlert('只有管理员可以添加域名', 'error');
+                return;
+            }
+
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            btn.textContent = '添加中...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/domains`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    hideAddModal();
+                    showAlert('域名添加成功');
+                    loadDomains();
+                } else {
+                    const result = await response.json();
+                    showAlert(result.error || '添加失败', 'error');
+                }
+            } catch (error) {
+                showAlert('添加失败', 'error');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function deleteDomain(id) {
+            if (!isAdmin) {
+                showAlert('只有管理员可以删除域名', 'error');
+                return;
+            }
+
+            if (!confirm('确定要删除这个域名吗?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/domains/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showAlert('域名删除成功');
+                    currentDomains = currentDomains.filter(d => d.id !== id);
+                    updateDomainsGrid();
+                } else {
+                    showAlert(result.error || '删除失败', 'error');
+                }
+            } catch (error) {
+                showAlert('删除失败', 'error');
+            }
+        }
+
+        async function checkDomain(id, btn) {
+            const originalText = btn.querySelector('.btn-text').textContent;
+            btn.innerHTML = '<span class="spinner"></span>';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/domains/${id}/check`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('检查完成');
+                    loadDomains();
+                } else {
+                    showAlert(result.error || '检查失败', 'error');
+                }
+            } catch (error) {
+                showAlert('检查失败', 'error');
+            }
+        }
+
+        async function checkAllDomains() {
+            const btn = document.querySelector('.toolbar .btn-secondary');
+            const originalText = btn.querySelector('.btn-text').textContent;
+            btn.innerHTML = '<span class="spinner"></span>';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/domains/check-all`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(`已检查 ${result.results.length} 个域名`);
+                    loadDomains();
+                } else {
+                    showAlert('检查失败', 'error');
+                }
+            } catch (error) {
+                showAlert('检查失败', 'error');
+            } finally {
+                btn.innerHTML = `<span class="btn-text">${originalText}</span>`;
+                btn.disabled = false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化 admin 状态
+            const adminStatusEl = document.getElementById('admin-status');
+            window.isAdmin = adminStatusEl && adminStatusEl.dataset.isAdmin === '1';
+            isAdmin = window.isAdmin;
+
+            const path = window.location.pathname;
+
+            if (path === '/login') {
+                renderLogin();
+            } else if (path === '/register') {
+                renderRegister();
+            } else if (path === '/index' || path === '/') {
+                loadDomains();
+                document.addEventListener('submit', (e) => {
+                    if (e.target.id === 'addDomainForm') {
+                        addDomain(e);
+                    }
+                });
+            }
+        });
+
+        window.onclick = (e) => {
+            const modal = document.getElementById('addModal');
+            if (modal && e.target === modal) {
+                hideAddModal();
+            }
+        };
+    </script>
+</body>
+</html>
