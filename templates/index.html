@@ -220,6 +220,10 @@
             padding: 32px 24px;
         }
 
+        .content-wrapper {
+            width: 100%;
+        }
+
         .toolbar {
             display: flex;
             justify-content: space-between;
@@ -242,7 +246,7 @@
 
         .cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 24px;
         }
 
@@ -260,6 +264,7 @@
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s, opacity 0.2s, margin 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: grab;
             position: relative;
+            width: 100%;
         }
 
         .card:hover {
@@ -343,15 +348,31 @@
             justify-content: space-between;
             margin-bottom: 12px;
             font-size: 14px;
+            align-items: center;
         }
 
         .info-label {
             color: var(--gray-600);
+            flex-shrink: 0;
         }
 
         .info-value {
             font-weight: 500;
             color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .info-value span:not(.domain-badge) {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
         }
 
         .status-indicator {
@@ -603,7 +624,177 @@
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
+        @media (max-width: 480px) {
+            *, *::before, *::after {
+                box-sizing: border-box;
+            }
+
+            html, body {
+                width: 100%;
+                overflow-x: hidden;
+            }
+
+            .auth-card {
+                padding: 20px;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .auth-card h1 {
+                font-size: 24px;
+            }
+
+            .modal-content {
+                padding: 20px;
+                width: 90%;
+                max-width: 90%;
+            }
+
+            .navbar {
+                padding: 12px 8px;
+                width: 100vw;
+                max-width: 100vw;
+                left: 0;
+                right: 0;
+            }
+
+            .navbar-content {
+                flex-direction: column;
+                gap: 6px;
+                align-items: center;
+                width: 100%;
+                max-width: 100%;
+                text-align: center;
+            }
+
+            .navbar-nav {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .navbar-brand {
+                font-size: 18px;
+            }
+
+            .navbar-nav span {
+                font-size: 12px;
+                max-width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .nav-link {
+                font-size: 13px;
+            }
+
+            .main-content {
+                padding: 16px 12px;
+                max-width: 100%;
+                width: 100%;
+                overflow-x: hidden;
+            }
+
+            .content-wrapper {
+                width: 100%;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                width: 100%;
+                overflow-x: hidden;
+            }
+
+            .card {
+                width: 100%;
+                padding: 12px;
+                overflow: hidden;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+            }
+
+            .card-header {
+                flex-direction: column;
+                gap: 6px;
+                align-items: flex-start;
+            }
+
+            .domain-name {
+                font-size: 14px;
+                word-break: break-all;
+            }
+
+            .info-row {
+                font-size: 11px;
+                margin-bottom: 6px;
+            }
+
+            .progress-label {
+                font-size: 10px;
+            }
+
+            .progress-bar {
+                height: 5px;
+            }
+
+            .issuer-info {
+                font-size: 10px;
+                margin-top: 10px;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+                margin-bottom: 16px;
+            }
+
+            .toolbar h1 {
+                text-align: center;
+                font-size: 18px;
+            }
+
+            .toolbar-actions {
+                justify-content: center;
+            }
+
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                margin-bottom: 16px;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+
+            .checkbox-group {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            .checkbox-item {
+                font-size: 13px;
+            }
+
+            .sort-select {
+                width: 100%;
+                font-size: 13px;
+            }
+
+            .card-actions {
+                width: 100%;
+            }
+
+            .card-actions button {
+                flex: 1;
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+        }
+
+        @media (min-width: 481px) and (max-width: 768px) {
             .auth-card {
                 padding: 24px;
             }
@@ -613,12 +804,62 @@
             }
 
             .navbar-content {
-                flex-direction: column;
+                flex-direction: row;
                 gap: 12px;
+                align-items: center;
+                width: 100%;
+            }
+
+            .navbar-brand {
+                font-size: 20px;
+            }
+
+            .nav-link {
+                font-size: 14px;
             }
 
             .main-content {
                 padding: 24px 16px;
+                max-width: 100%;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .card {
+                width: 100%;
+                padding: 16px;
+            }
+
+            .card-header {
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+
+            .domain-name {
+                font-size: 15px;
+                word-break: break-all;
+            }
+
+            .info-row {
+                font-size: 12px;
+                margin-bottom: 8px;
+            }
+
+            .progress-label {
+                font-size: 11px;
+            }
+
+            .progress-bar {
+                height: 6px;
+            }
+
+            .issuer-info {
+                font-size: 11px;
+                margin-top: 12px;
             }
 
             .toolbar {
@@ -628,19 +869,30 @@
 
             .toolbar h1 {
                 text-align: center;
+                font-size: 20px;
             }
 
             .toolbar-actions {
                 justify-content: center;
             }
 
-            .cards-grid {
-                grid-template-columns: 1fr;
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
             }
 
-            .card-header {
-                flex-direction: column;
-                gap: 12px;
+            .filter-group {
+                width: 100%;
+            }
+
+            .checkbox-group {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .sort-select {
+                width: 100%;
             }
 
             .card-actions {
@@ -651,25 +903,11 @@
                 flex: 1;
             }
         }
-
-        @media (max-width: 480px) {
-            .auth-card {
-                padding: 20px;
-            }
-
-            .auth-card h1 {
-                font-size: 24px;
-            }
-
-            .modal-content {
-                padding: 24px;
-            }
-        }
     </style>
 </head>
 <body>
     <div id="app"></div>
-    <div id="admin-status" data-is-admin="{{ 1 if is_admin else 0 }}" style="display: none;"></div>
+    <div id="admin-status" data-is-admin="{{ 1 if is_admin else 0 }}" data-username="{{ username or '' }}" style="display: none;"></div>
 
     <script>
         const API_BASE = '/api';
@@ -929,15 +1167,19 @@
                         </div>
                     </div>
 
-                    ${domain.issuer || domain.subject ? `
+                    ${domain.subject_cn || domain.issuer_o || domain.issuer_cn ? `
                         <div class="issuer-info">
                             <div class="issuer-info-row">
                                 <span class="issuer-info-label">证书主域名:</span>
-                                <span class="issuer-info-value" title="${domain.subject || '未知'}">${domain.subject || '未知'}</span>
+                                <span class="issuer-info-value" title="${domain.subject_cn || '未知'}">${domain.subject_cn || '未知'}</span>
                             </div>
                             <div class="issuer-info-row">
                                 <span class="issuer-info-label">签发机构:</span>
-                                <span class="issuer-info-value" title="${domain.issuer || '未知'}">${domain.issuer || '未知'}</span>
+                                <span class="issuer-info-value" title="${domain.issuer_o || '未知'}">${domain.issuer_o || '未知'}</span>
+                            </div>
+                            <div class="issuer-info-row">
+                                <span class="issuer-info-label">签发公钥:</span>
+                                <span class="issuer-info-value" title="${domain.issuer_cn || '未知'}">${domain.issuer_cn || '未知'}</span>
                             </div>
                         </div>
                     ` : ''}
@@ -958,7 +1200,7 @@
                         <div class="navbar-content">
                             <div class="navbar-brand">CredMonitor</div>
                             <div class="navbar-nav">
-                                <span style="color: var(--gray-600);">欢迎, ${window.username || '用户'}</span>
+                                <span style="color: var(--gray-600);">欢迎, <span style="font-weight: 500;">${window.username || '用户'}</span>${isAdmin ? ' <span style="font-size: 14px; color: var(--success-color); font-weight: normal;">(管理员)</span>' : ''}</span>
                                 <a href="/logout" class="nav-link">退出</a>
                             </div>
                         </div>
@@ -966,7 +1208,7 @@
 
                     <main class="main-content">
                         <div class="toolbar">
-                            <h1>证书监控${isAdmin ? ' <span style="font-size: 14px; color: var(--success-color); font-weight: normal;">(管理员)</span>' : ''}</h1>
+                            <h1>证书监控</h1>
                             <div class="toolbar-actions">
                                 <button class="btn btn-primary" onclick="showAddModal()">
                                     <span class="btn-text">添加域名</span>
@@ -974,7 +1216,8 @@
                             </div>
                         </div>
 
-                        <div class="filter-bar">
+                        <div class="content-wrapper">
+                            <div class="filter-bar">
                             <div class="filter-group">
                                 <span class="filter-label">状态筛选:</span>
                                 <div class="checkbox-group">
@@ -1016,6 +1259,7 @@
                         <div class="cards-grid${isEmpty ? ' empty' : ''}" id="domainsGrid">
                             ${domainsHtml}
                         </div>
+                        </div>
                     </main>
                 </div>
 
@@ -1051,7 +1295,6 @@
                 </div>
             `;
 
-            window.username = document.querySelector('.navbar-nav span').textContent.split(', ')[1];
             dashboardInitialized = true;
 
             // 初始化拖拽功能
@@ -1126,15 +1369,19 @@
                         </div>
                     </div>
 
-                    ${domain.issuer || domain.subject ? `
+                    ${domain.subject_cn || domain.issuer_o || domain.issuer_cn ? `
                         <div class="issuer-info">
                             <div class="issuer-info-row">
                                 <span class="issuer-info-label">证书主域名:</span>
-                                <span class="issuer-info-value" title="${domain.subject || '未知'}">${domain.subject || '未知'}</span>
+                                <span class="issuer-info-value" title="${domain.subject_cn || '未知'}">${domain.subject_cn || '未知'}</span>
                             </div>
                             <div class="issuer-info-row">
                                 <span class="issuer-info-label">签发机构:</span>
-                                <span class="issuer-info-value" title="${domain.issuer || '未知'}">${domain.issuer || '未知'}</span>
+                                <span class="issuer-info-value" title="${domain.issuer_o || '未知'}">${domain.issuer_o || '未知'}</span>
+                            </div>
+                            <div class="issuer-info-row">
+                                <span class="issuer-info-label">签发公钥:</span>
+                                <span class="issuer-info-value" title="${domain.issuer_cn || '未知'}">${domain.issuer_cn || '未知'}</span>
                             </div>
                         </div>
                     ` : ''}
@@ -1541,9 +1788,10 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // 初始化 admin 状态
+            // 初始化 admin 状态和用户名
             const adminStatusEl = document.getElementById('admin-status');
             window.isAdmin = adminStatusEl && adminStatusEl.dataset.isAdmin === '1';
+            window.username = adminStatusEl && adminStatusEl.dataset.username || '';
             isAdmin = window.isAdmin;
 
             const path = window.location.pathname;

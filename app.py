@@ -115,33 +115,46 @@ def check_cert_expiry(domain, target_type='dns', target_value=None):
                 else:
                     status = 'valid'
 
-            # 获取签发机构
-            issuer = 'Unknown'
+            # 解析证书主域名 (Subject CN)
+            subject_cn = None
+            subject_o = None
+            subject_ou = None
+            try:
+                for attr in cert.subject:
+                    if attr.oid._name == 'commonName':
+                        subject_cn = attr.value
+                    elif attr.oid._name == 'organizationName':
+                        subject_o = attr.value
+                    elif attr.oid._name == 'organizationalUnitName':
+                        subject_ou = attr.value
+            except:
+                pass
+
+            # 解析签发机构信息 (Issuer CN, O, OU)
+            issuer_cn = None
+            issuer_o = None
+            issuer_ou = None
             try:
                 for attr in cert.issuer:
                     if attr.oid._name == 'commonName':
-                        issuer = attr.value
-                        break
+                        issuer_cn = attr.value
+                    elif attr.oid._name == 'organizationName':
+                        issuer_o = attr.value
+                    elif attr.oid._name == 'organizationalUnitName':
+                        issuer_ou = attr.value
             except:
-                issuer = 'Unknown'
-
-            # 获取证书主域名
-            subject = cert.subject
-            if hasattr(subject, 'rfc4514_string'):
-                subject_str = subject.rfc4514_string()
-            else:
-                subject_str = str(subject)
-
-            # 去掉 subject 中的 CN=
-            if subject_str.startswith('CN='):
-                subject_str = subject_str[3:]
+                pass
 
         return {
             'success': True,
             'expiry_date': expiry_date.replace(tzinfo=None),  # 转换为naive datetime
             'start_date': start_date.replace(tzinfo=None),  # 证书发放时间
-            'subject': subject_str,  # 证书主域名
-            'issuer': issuer,
+            'subject_cn': subject_cn,  # 证书主域名 (CN)
+            'subject_o': subject_o,    # 证书组织 (O)
+            'subject_ou': subject_ou,  # 证书组织单位 (OU)
+            'issuer_cn': issuer_cn,    # 签发机构CN
+            'issuer_o': issuer_o,      # 签发机构O
+            'issuer_ou': issuer_ou,    # 签发机构OU
             'days_remaining': days_remaining if 'days_remaining' in locals() else 0,
             'status': status
         }
@@ -179,7 +192,9 @@ def admin_required(f):
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', is_admin=session.get('is_admin', False))
+    return render_template('index.html',
+                          is_admin=session.get('is_admin', False),
+                          username=session.get('username', ''))
 
 
 
@@ -308,7 +323,12 @@ def get_domains():
         if check_result['success']:
             expiry_date = check_result['expiry_date']
             start_date = check_result['start_date']
-            subject = check_result['subject']
+            subject_cn = check_result.get('subject_cn')
+            subject_o = check_result.get('subject_o')
+            subject_ou = check_result.get('subject_ou')
+            issuer_cn = check_result.get('issuer_cn')
+            issuer_o = check_result.get('issuer_o')
+            issuer_ou = check_result.get('issuer_ou')
             days_remaining = check_result['days_remaining']
 
             # 根据证书的实际有效期计算剩余比例
@@ -319,15 +339,18 @@ def get_domains():
                 percentage = 0
 
             status = check_result['status']
-            issuer = check_result['issuer']
         else:
             expiry_date = None
             start_date = None
-            subject = None
+            subject_cn = None
+            subject_o = None
+            subject_ou = None
+            issuer_cn = None
+            issuer_o = None
+            issuer_ou = None
             days_remaining = None
             percentage = 0
             status = check_result['status']
-            issuer = None
 
         result.append({
             'id': domain['id'],
@@ -336,11 +359,15 @@ def get_domains():
             'target_value': domain['target_value'],
             'expiry_date': expiry_date,
             'start_date': start_date,
-            'subject': subject,
+            'subject_cn': subject_cn,
+            'subject_o': subject_o,
+            'subject_ou': subject_ou,
+            'issuer_cn': issuer_cn,
+            'issuer_o': issuer_o,
+            'issuer_ou': issuer_ou,
             'days_remaining': days_remaining,
             'percentage': percentage,
             'status': status,
-            'issuer': issuer,
             'created_at': domain['created_at']
         })
 
