@@ -108,8 +108,6 @@ def check_cert_expiry(domain, target_type='dns', target_value=None):
 
                 if days_remaining < 0:
                     status = 'expired'
-                elif days_remaining < 7:
-                    status = 'critical'
                 elif days_remaining < 30:
                     status = 'warning'
                 else:
