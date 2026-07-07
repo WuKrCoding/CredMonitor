@@ -6,6 +6,7 @@ import socket
 import secrets
 import os
 from functools import wraps
+from contextlib import contextmanager
 import dns.resolver
 from datetime import datetime, timezone
 from cryptography import x509
@@ -16,43 +17,45 @@ DATABASE = os.getenv('DATABASE_PATH', 'credmonitor.db')
 app.config['DATABASE'] = DATABASE
 
 
+@contextmanager
 def get_db():
+    """数据库连接上下文管理器，自动管理连接的打开和关闭"""
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def init_db():
-    conn = get_db()
-    cursor = conn.cursor()
+    with get_db() as conn:
+        cursor = conn.cursor()
 
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            salt TEXT NOT NULL,
-            is_admin INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                salt TEXT NOT NULL,
+                is_admin INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS domains (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            domain_name TEXT NOT NULL,
-            target_type TEXT DEFAULT 'dns',
-            target_value TEXT,
-            sort_order INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS domains (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                domain_name TEXT NOT NULL,
+                target_type TEXT DEFAULT 'dns',
+                target_value TEXT,
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
-
-
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 def check_cert_expiry(domain, target_type='dns', target_value=None):
@@ -202,11 +205,10 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
 
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
-        user = cursor.fetchone()
-        conn.close()
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
+            user = cursor.fetchone()
 
         if user and check_password_hash(user['password'], password + user['salt']):
             session['user_id'] = user['id']
@@ -229,35 +231,26 @@ def register():
             flash('请填写完整信息', 'error')
             return render_template('register.html')
 
-        conn = get_db()
-        cursor = conn.cursor()
-
-        # 检查是否已有用户
-        cursor.execute('SELECT COUNT(*) FROM users')
-        user_count = cursor.fetchone()[0]
-
-        # 如果已有用户，普通注册已关闭
-        if user_count > 0:
-            conn.close()
-            flash('注册功能已关闭，请联系管理员添加账号', 'error')
-            return render_template('register.html')
-
-        # 首个用户自动成为管理员，并使用加盐hash
+        # 使用原子操作防止竞态条件：只有表中无用户时才插入
         salt = secrets.token_hex(16)
         password_hash = generate_password_hash(password + salt)
 
-        try:
-            cursor.execute(
-                'INSERT INTO users (username, password, salt, is_admin) VALUES (?, ?, ?, 1)',
-                (username, password_hash, salt)
-            )
-            conn.commit()
-            flash('管理员账号注册成功，请登录', 'success')
-            conn.close()
-            return redirect(url_for('login'))
-        except sqlite3.IntegrityError:
-            flash('用户名已存在', 'error')
-        conn.close()
+        with get_db() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    '''INSERT INTO users (username, password, salt, is_admin)
+                       SELECT ?, ?, ?, 1 WHERE NOT EXISTS (SELECT 1 FROM users)''',
+                    (username, password_hash, salt)
+                )
+                if cursor.rowcount == 0:
+                    flash('注册功能已关闭，请联系管理员添加账号', 'error')
+                    return render_template('register.html')
+                conn.commit()
+                flash('管理员账号注册成功，请登录', 'success')
+                return redirect(url_for('login'))
+            except sqlite3.IntegrityError:
+                flash('用户名已存在', 'error')
 
     return render_template('register.html')
 
@@ -281,92 +274,54 @@ def add_user():
     if not username or not password:
         return jsonify({'success': False, 'error': '用户名和密码不能为空'}), 400
 
-    conn = get_db()
-    cursor = conn.cursor()
-
     salt = secrets.token_hex(16)
     password_hash = generate_password_hash(password + salt)
 
-    try:
-        cursor.execute(
-            'INSERT INTO users (username, password, salt, is_admin) VALUES (?, ?, ?, ?)',
-            (username, password_hash, salt, 1 if is_admin else 0)
-        )
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True, 'message': f'用户 {username} 添加成功'})
-    except sqlite3.IntegrityError:
-        conn.close()
-        return jsonify({'success': False, 'error': '用户名已存在'}), 400
+    with get_db() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                'INSERT INTO users (username, password, salt, is_admin) VALUES (?, ?, ?, ?)',
+                (username, password_hash, salt, 1 if is_admin else 0)
+            )
+            conn.commit()
+            return jsonify({'success': True, 'message': f'用户 {username} 添加成功'})
+        except sqlite3.IntegrityError:
+            return jsonify({'success': False, 'error': '用户名已存在'}), 400
 
 
 @app.route('/api/domains', methods=['GET'])
 @login_required
 def get_domains():
-    # 所有用户共享域名列表
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT * FROM domains ORDER BY sort_order ASC, created_at DESC
-    ''')
-    domains = cursor.fetchall()
-    conn.close()
+    """获取域名列表（仅返回数据库配置，不做实时 SSL 检查）"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT * FROM domains ORDER BY sort_order ASC, created_at DESC
+        ''')
+        domains = cursor.fetchall()
 
     result = []
-
     for domain in domains:
-        # 实时检查证书
-        check_result = check_cert_expiry(domain['domain_name'], domain['target_type'], domain['target_value'])
-
-        if check_result['success']:
-            expiry_date = check_result['expiry_date']
-            start_date = check_result['start_date']
-            subject_cn = check_result.get('subject_cn')
-            subject_o = check_result.get('subject_o')
-            subject_ou = check_result.get('subject_ou')
-            issuer_cn = check_result.get('issuer_cn')
-            issuer_o = check_result.get('issuer_o')
-            issuer_ou = check_result.get('issuer_ou')
-            days_remaining = check_result['days_remaining']
-
-            # 根据证书的实际有效期计算剩余比例
-            total_valid_days = (expiry_date - start_date).days if expiry_date and start_date else 365
-            if total_valid_days > 0:
-                percentage = max(0, min(100, (days_remaining / total_valid_days) * 100))
-            else:
-                percentage = 0
-
-            status = check_result['status']
-        else:
-            expiry_date = None
-            start_date = None
-            subject_cn = None
-            subject_o = None
-            subject_ou = None
-            issuer_cn = None
-            issuer_o = None
-            issuer_ou = None
-            days_remaining = None
-            percentage = 0
-            status = check_result['status']
-
         result.append({
             'id': domain['id'],
             'domain_name': domain['domain_name'],
             'target_type': domain['target_type'],
             'target_value': domain['target_value'],
-            'expiry_date': expiry_date,
-            'start_date': start_date,
-            'subject_cn': subject_cn,
-            'subject_o': subject_o,
-            'subject_ou': subject_ou,
-            'issuer_cn': issuer_cn,
-            'issuer_o': issuer_o,
-            'issuer_ou': issuer_ou,
-            'days_remaining': days_remaining,
-            'percentage': percentage,
-            'status': status,
-            'created_at': domain['created_at']
+            'sort_order': domain['sort_order'],
+            'created_at': domain['created_at'],
+            # 初始状态为 unknown，前端会异步触发检查
+            'status': 'unknown',
+            'expiry_date': None,
+            'start_date': None,
+            'subject_cn': None,
+            'subject_o': None,
+            'subject_ou': None,
+            'issuer_cn': None,
+            'issuer_o': None,
+            'issuer_ou': None,
+            'days_remaining': None,
+            'percentage': 0,
         })
 
     return jsonify(result)
@@ -386,35 +341,33 @@ def add_domain():
 
     domain_name_clean = domain_name.strip().lower()
 
-    conn = get_db()
-    cursor = conn.cursor()
+    with get_db() as conn:
+        cursor = conn.cursor()
 
-    # 检查是否已存在完全相同的配置（域名 + target_type + target_value）
-    target_value_clean = target_value.strip() if target_value else ''
-    cursor.execute('''
-        SELECT id FROM domains
-        WHERE LOWER(TRIM(domain_name)) = ?
-        AND target_type = ?
-        AND (target_value = ? OR (target_value IS NULL AND ? = ''))
-    ''', (domain_name_clean, target_type, target_value_clean, target_value_clean))
-    existing = cursor.fetchone()
+        # 检查是否已存在完全相同的配置
+        target_value_clean = target_value.strip() if target_value else ''
+        cursor.execute('''
+            SELECT id FROM domains
+            WHERE LOWER(TRIM(domain_name)) = ?
+            AND target_type = ?
+            AND (target_value = ? OR (target_value IS NULL AND ? = ''))
+        ''', (domain_name_clean, target_type, target_value_clean, target_value_clean))
+        existing = cursor.fetchone()
 
-    if existing:
-        conn.close()
-        return jsonify({'success': False, 'error': f'该域名配置已存在'}), 400
+        if existing:
+            return jsonify({'success': False, 'error': f'该域名配置已存在'}), 400
 
-    # 获取当前最大的 sort_order
-    cursor.execute('SELECT MAX(sort_order) FROM domains')
-    max_order = cursor.fetchone()[0] or 0
-    new_order = max_order + 1
+        # 获取当前最大的 sort_order
+        cursor.execute('SELECT MAX(sort_order) FROM domains')
+        max_order = cursor.fetchone()[0] or 0
+        new_order = max_order + 1
 
-    cursor.execute(
-        'INSERT INTO domains (domain_name, target_type, target_value, sort_order) VALUES (?, ?, ?, ?)',
-        (domain_name.strip(), target_type, target_value.strip() if target_value else None, new_order)
-    )
-    domain_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
+        cursor.execute(
+            'INSERT INTO domains (domain_name, target_type, target_value, sort_order) VALUES (?, ?, ?, ?)',
+            (domain_name.strip(), target_type, target_value.strip() if target_value else None, new_order)
+        )
+        domain_id = cursor.lastrowid
+        conn.commit()
 
     return jsonify({'success': True, 'domain_id': domain_id})
 
@@ -428,30 +381,18 @@ def reorder_domains():
         data = request.json
         order_list = data.get('order', [])
 
-        print(f'[DEBUG] 收到排序请求: {order_list}')
-
         if not isinstance(order_list, list):
             return jsonify({'success': False, 'error': '无效的排序数据'}), 400
 
-        conn = get_db()
-        cursor = conn.cursor()
+        with get_db() as conn:
+            cursor = conn.cursor()
+            for index, domain_id in enumerate(order_list):
+                cursor.execute('UPDATE domains SET sort_order = ? WHERE id = ?',
+                             (index, domain_id))
+            conn.commit()
 
-        for index, domain_id in enumerate(order_list):
-            cursor.execute('UPDATE domains SET sort_order = ? WHERE id = ?',
-                         (index, domain_id))
-            print(f'[DEBUG] 更新域名 {domain_id} 的排序为 {index}')
-
-        conn.commit()
-
-        # 验证更新结果
-        cursor.execute('SELECT id, domain_name, sort_order FROM domains ORDER BY sort_order ASC')
-        result = cursor.fetchall()
-        print(f'[DEBUG] 更新后的排序: {[(r[0], r[1], r[2]) for r in result]}')
-
-        conn.close()
         return jsonify({'success': True})
     except Exception as e:
-        print(f'[ERROR] 排序失败: {e}')
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -460,36 +401,127 @@ def reorder_domains():
 @admin_required
 def delete_domain(domain_id):
     """删除域名（仅管理员）"""
-    conn = get_db()
-    cursor = conn.cursor()
-
-    cursor.execute('DELETE FROM domains WHERE id = ?', (domain_id,))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM domains WHERE id = ?', (domain_id,))
+        conn.commit()
 
     return jsonify({'success': True})
+
+
+@app.route('/api/domains/<int:domain_id>/check', methods=['POST'])
+@login_required
+def check_single_domain(domain_id):
+    """检查单个域名的证书状态"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM domains WHERE id = ?', (domain_id,))
+        domain = cursor.fetchone()
+
+    if not domain:
+        return jsonify({'success': False, 'error': '域名不存在'}), 404
+
+    check_result = check_cert_expiry(domain['domain_name'], domain['target_type'], domain['target_value'])
+
+    if check_result['success']:
+        expiry_date = check_result['expiry_date']
+        start_date = check_result['start_date']
+        days_remaining = check_result['days_remaining']
+        total_valid_days = (expiry_date - start_date).days if expiry_date and start_date else 365
+        percentage = max(0, min(100, (days_remaining / total_valid_days) * 100)) if total_valid_days > 0 else 0
+
+        return jsonify({
+            'success': True,
+            'domain_id': domain_id,
+            'domain_name': domain['domain_name'],
+            'target_type': domain['target_type'],
+            'target_value': domain['target_value'],
+            'expiry_date': expiry_date,
+            'start_date': start_date,
+            'subject_cn': check_result.get('subject_cn'),
+            'subject_o': check_result.get('subject_o'),
+            'subject_ou': check_result.get('subject_ou'),
+            'issuer_cn': check_result.get('issuer_cn'),
+            'issuer_o': check_result.get('issuer_o'),
+            'issuer_ou': check_result.get('issuer_ou'),
+            'days_remaining': days_remaining,
+            'percentage': percentage,
+            'status': check_result['status'],
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'domain_id': domain_id,
+            'domain_name': domain['domain_name'],
+            'error': check_result.get('error', '未知错误'),
+            'status': 'error',
+            'days_remaining': None,
+            'percentage': 0,
+        })
+
+
+def _build_check_result(domain, check_result):
+    """将 check_cert_expiry 结果构建为标准化字典"""
+    if check_result['success']:
+        expiry_date = check_result['expiry_date']
+        start_date = check_result['start_date']
+        days_remaining = check_result['days_remaining']
+        total_valid_days = (expiry_date - start_date).days if expiry_date and start_date else 365
+        percentage = max(0, min(100, (days_remaining / total_valid_days) * 100)) if total_valid_days > 0 else 0
+
+        return {
+            'domain_id': domain['id'],
+            'domain_name': domain['domain_name'],
+            'target_type': domain['target_type'],
+            'target_value': domain['target_value'],
+            'expiry_date': expiry_date,
+            'start_date': start_date,
+            'subject_cn': check_result.get('subject_cn'),
+            'subject_o': check_result.get('subject_o'),
+            'subject_ou': check_result.get('subject_ou'),
+            'issuer_cn': check_result.get('issuer_cn'),
+            'issuer_o': check_result.get('issuer_o'),
+            'issuer_ou': check_result.get('issuer_ou'),
+            'days_remaining': days_remaining,
+            'percentage': percentage,
+            'status': check_result['status'],
+            'success': True,
+        }
+    else:
+        return {
+            'domain_id': domain['id'],
+            'domain_name': domain['domain_name'],
+            'target_type': domain['target_type'],
+            'target_value': domain['target_value'],
+            'expiry_date': None,
+            'start_date': None,
+            'subject_cn': None,
+            'subject_o': None,
+            'subject_ou': None,
+            'issuer_cn': None,
+            'issuer_o': None,
+            'issuer_ou': None,
+            'days_remaining': None,
+            'percentage': 0,
+            'status': 'error',
+            'success': False,
+            'error': check_result.get('error', '未知错误'),
+        }
 
 
 @app.route('/api/domains/check-all', methods=['POST'])
 @login_required
 def check_all_domains():
-    conn = get_db()
-    cursor = conn.cursor()
-
-    cursor.execute('SELECT * FROM domains')
-    domains = cursor.fetchall()
-    conn.close()
+    """检查所有域名的证书状态，返回完整检查结果"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM domains')
+        domains = cursor.fetchall()
 
     results = []
     for domain in domains:
         check_result = check_cert_expiry(domain['domain_name'], domain['target_type'], domain['target_value'])
-
-        results.append({
-            'domain_id': domain['id'],
-            'domain_name': domain['domain_name'],
-            'status': check_result.get('status', 'error'),
-            'success': check_result['success']
-        })
+        results.append(_build_check_result(domain, check_result))
 
     return jsonify({'success': True, 'results': results})
 
