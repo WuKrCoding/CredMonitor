@@ -1115,14 +1115,14 @@
             const isEmpty = filteredDomains.length === 0;
 
             const domainsHtml = !isEmpty ? filteredDomains.map((domain, index) => `
-                <div class="card" data-id="${domain.id}" draggable="true" data-index="${index}">
+                <div class="card" data-id="${domain.id}" ${isAdmin ? 'draggable="true"' : ''} data-index="${index}">
                     <div class="card-header">
                         <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                            <span style="cursor: grab; color: var(--gray-400);">⋮⋮</span>
+                            ${isAdmin ? '<span style="cursor: grab; color: var(--gray-400);">⋮⋮</span>' : ''}
                             <span class="domain-name">${domain.domain_name}</span>
                         </div>
                         <div class="card-actions">
-                            <button class="btn btn-danger btn-sm" onclick="deleteDomain(${domain.id})">删除</button>
+                            ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteDomain(${domain.id})">删除</button>` : ''}
                         </div>
                     </div>
 
@@ -1210,6 +1210,9 @@
                         <div class="toolbar">
                             <h1>证书监控</h1>
                             <div class="toolbar-actions">
+                                <button class="btn btn-secondary" onclick="checkAllDomains()">
+                                    <span class="btn-text">检查所有</span>
+                                </button>
                                 <button class="btn btn-primary" onclick="showAddModal()">
                                     <span class="btn-text">添加域名</span>
                                 </button>
@@ -1454,20 +1457,42 @@
                     currentDomains = domains;
                     if (!dashboardInitialized) {
                         renderDashboardFull(domains);
+                        // 页面渲染后，异步触发批量证书检查
+                        setTimeout(() => checkAllDomainsSilent(), 200);
                     } else {
                         updateDomainsGrid();
                     }
                 }
             } catch (error) {
                 console.error('Failed to load domains:', error);
+                if (!dashboardInitialized) {
+                    document.getElementById('app').innerHTML = `
+                        <div class="empty-state">
+                            <h3>加载失败</h3>
+                            <p>无法获取域名列表，请检查网络或刷新页面</p>
+                        </div>`;
+                }
             }
         }
 
-        async         function checkAdminStatus() {
+        async function checkAllDomainsSilent() {
+            """后台静默检查所有域名，更新卡片"""
             try {
-                isAdmin = window.isAdmin === true;
+                const response = await fetch(`${API_BASE}/domains/check-all`, { method: 'POST' });
+                if (!response.ok) return;
+                const data = await response.json();
+                if (data.success && data.results) {
+                    // 用检查结果更新 currentDomains
+                    data.results.forEach(result => {
+                        const idx = currentDomains.findIndex(d => d.id === result.domain_id);
+                        if (idx !== -1) {
+                            currentDomains[idx] = { ...currentDomains[idx], ...result };
+                        }
+                    });
+                    updateDomainsGrid();
+                }
             } catch (error) {
-                console.error('Failed to check admin status:', error);
+                console.error('Silent check failed:', error);
             }
         }
 
@@ -1738,51 +1763,60 @@
         }
 
         async function checkDomain(id, btn) {
-            const originalText = btn.querySelector('.btn-text').textContent;
+            const originalHTML = btn.innerHTML;
             btn.innerHTML = '<span class="spinner"></span>';
             btn.disabled = true;
 
             try {
-                const response = await fetch(`${API_BASE}/domains/${id}/check`, {
-                    method: 'POST'
-                });
-
+                const response = await fetch(`${API_BASE}/domains/${id}/check`, { method: 'POST' });
                 const result = await response.json();
 
                 if (result.success) {
                     showAlert('检查完成');
-                    loadDomains();
+                    // 更新当前域名数据
+                    const idx = currentDomains.findIndex(d => d.id === id);
+                    if (idx !== -1) {
+                        currentDomains[idx] = { ...currentDomains[idx], ...result };
+                    }
+                    updateDomainsGrid();
                 } else {
                     showAlert(result.error || '检查失败', 'error');
                 }
             } catch (error) {
                 showAlert('检查失败', 'error');
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
             }
         }
 
         async function checkAllDomains() {
             const btn = document.querySelector('.toolbar .btn-secondary');
-            const originalText = btn.querySelector('.btn-text').textContent;
-            btn.innerHTML = '<span class="spinner"></span>';
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner"></span> 检查中...';
             btn.disabled = true;
 
             try {
-                const response = await fetch(`${API_BASE}/domains/check-all`, {
-                    method: 'POST'
-                });
+                const response = await fetch(`${API_BASE}/domains/check-all`, { method: 'POST' });
+                const data = await response.json();
 
-                const result = await response.json();
-
-                if (result.success) {
-                    showAlert(`已检查 ${result.results.length} 个域名`);
-                    loadDomains();
+                if (data.success && data.results) {
+                    showAlert(`已检查 ${data.results.length} 个域名`);
+                    // 用检查结果更新 currentDomains
+                    data.results.forEach(result => {
+                        const idx = currentDomains.findIndex(d => d.id === result.domain_id);
+                        if (idx !== -1) {
+                            currentDomains[idx] = { ...currentDomains[idx], ...result };
+                        }
+                    });
+                    updateDomainsGrid();
                 } else {
                     showAlert('检查失败', 'error');
                 }
             } catch (error) {
-                showAlert('检查失败', 'error');
+                showAlert('检查失败: ' + error.message, 'error');
             } finally {
-                btn.innerHTML = `<span class="btn-text">${originalText}</span>`;
+                btn.innerHTML = originalHTML;
                 btn.disabled = false;
             }
         }
