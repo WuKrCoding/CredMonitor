@@ -399,12 +399,17 @@
             background-color: var(--gray-900);
         }
 
+        .status-invalid {
+            background-color: #ef4444;
+        }
+
         .status-error {
             background-color: var(--gray-600);
         }
 
         .status-unknown {
             background-color: var(--gray-400);
+            animation: pulse-dot 1.5s ease-in-out infinite;
         }
 
         .progress-container {
@@ -467,6 +472,51 @@
             max-width: calc(100% - 100px);
         }
 
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-count {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--gray-600);
+        }
+
         .filter-bar {
             background: white;
             padding: 16px;
@@ -476,7 +526,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 20px;
-            align-items: center;
+            align-items: flex-end;
         }
 
         .filter-group {
@@ -511,6 +561,20 @@
             height: 16px;
         }
 
+        .search-input {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            min-width: 200px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
         .sort-select {
             padding: 8px 12px;
             border: 1px solid var(--gray-300);
@@ -523,6 +587,45 @@
         .sort-select:focus {
             outline: none;
             border-color: var(--primary-color);
+        }
+
+        .auto-refresh-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--gray-600);
+            background: white;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .auto-refresh-toggle.active {
+            border-color: var(--success-color);
+            color: var(--success-color);
+            background: #f0fdf4;
+        }
+
+        .auto-refresh-toggle .toggle-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gray-400);
+            transition: background 0.2s;
+        }
+
+        .auto-refresh-toggle.active .toggle-dot {
+            background: var(--success-color);
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
         }
 
         .empty-state {
@@ -541,6 +644,50 @@
             height: 64px;
             margin-bottom: 16px;
             color: var(--gray-400);
+        }
+
+        /* Loading Skeleton */
+        .skeleton-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 24px;
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .skeleton-line {
+            height: 14px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            margin-bottom: 12px;
+        }
+
+        .skeleton-line.short { width: 40%; }
+        .skeleton-line.medium { width: 65%; }
+        .skeleton-line.long { width: 85%; margin-bottom: 20px; }
+
+        .skeleton-bar {
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        .card-checking-overlay {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--primary-color);
         }
 
         /* Modal Styles */
@@ -931,6 +1078,7 @@
                 'warning': '#f59e0b',
                 'critical': '#dc2626',
                 'expired': '#1f2937',
+                'invalid': '#ef4444',
                 'error': '#6b7280',
                 'unknown': '#9ca3af'
             };
@@ -942,8 +1090,9 @@
                 'valid': '正常',
                 'warning': '即将过期',
                 'expired': '已过期',
+                'invalid': '未生效',
                 'error': '无法访问',
-                'unknown': '未知'
+                'unknown': '检查中...'
             };
             return texts[status] || '未知';
         }
@@ -954,6 +1103,47 @@
             if (percentage < 60) return '#f59e0b';
             if (percentage < 80) return '#84cc16';
             return '#10b981';
+        }
+
+        function renderSkeleton(count = 3) {
+            let html = '';
+            for (let i = 0; i < count; i++) {
+                html += `
+                    <div class="skeleton-card">
+                        <div class="skeleton-line medium"></div>
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line long"></div>
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-bar"></div>
+                    </div>`;
+            }
+            return html;
+        }
+
+        function renderStatsBar() {
+            const stats = { valid: 0, warning: 0, expired: 0, error: 0, unknown: 0, invalid: 0 };
+            currentDomains.forEach(d => {
+                if (stats.hasOwnProperty(d.status)) stats[d.status]++;
+            });
+
+            const items = [
+                { status: 'valid', label: '正常', color: '#10b981' },
+                { status: 'warning', label: '即将过期', color: '#f59e0b' },
+                { status: 'expired', label: '已过期', color: '#1f2937' },
+                { status: 'invalid', label: '未生效', color: '#ef4444' },
+                { status: 'error', label: '无法访问', color: '#6b7280' },
+                { status: 'unknown', label: '待检查', color: '#9ca3af' },
+            ];
+
+            return items.map(item => `
+                <div class="stat-card">
+                    <div class="stat-dot" style="background: ${item.color};"></div>
+                    <div class="stat-info">
+                        <span class="stat-count">${stats[item.status] || 0}</span>
+                        <span class="stat-label">${item.label}</span>
+                    </div>
+                </div>
+            `).join('');
         }
 
         function showAlert(message, type = 'success') {
@@ -1060,9 +1250,11 @@
 
         // 筛选和排序状态
         let currentDomains = [];
-        let statusFilters = ['valid', 'warning', 'expired', 'error'];
+        let statusFilters = ['valid', 'warning', 'expired', 'error', 'unknown'];
         let sortField = 'custom';
         let sortOrder = 'asc';
+        let searchQuery = '';
+        let autoRefreshTimer = null;
         let dashboardInitialized = false;
         let dragSrcEl = null;
         let dragSrcElId = null;
@@ -1072,10 +1264,20 @@
         let isAdmin = false;
 
         function applyFiltersAndSort(domains) {
-            // 筛选
+            // 状态筛选
             let filtered = domains.filter(domain => {
                 return statusFilters.includes(domain.status);
             });
+
+            // 搜索过滤
+            if (searchQuery.trim()) {
+                const query = searchQuery.trim().toLowerCase();
+                filtered = filtered.filter(domain => {
+                    return domain.domain_name.toLowerCase().includes(query) ||
+                           (domain.subject_cn && domain.subject_cn.toLowerCase().includes(query)) ||
+                           (domain.issuer_o && domain.issuer_o.toLowerCase().includes(query));
+                });
+            }
 
             // 如果是自定义排序，后端已经按sort_order排序，直接返回
             if (sortField === 'custom') {
@@ -1219,49 +1421,74 @@
                             </div>
                         </div>
 
+                        <div class="stats-bar" id="statsBar">
+                            ${renderStatsBar()}
+                        </div>
+
                         <div class="content-wrapper">
                             <div class="filter-bar">
-                            <div class="filter-group">
-                                <span class="filter-label">状态筛选:</span>
-                                <div class="checkbox-group">
-                                    <label class="checkbox-item">
-                                        <input type="checkbox" value="valid" checked onchange="updateStatusFilter(this)">
-                                        <span>正常</span>
-                                    </label>
-                                    <label class="checkbox-item">
-                                        <input type="checkbox" value="warning" checked onchange="updateStatusFilter(this)">
-                                        <span>即将过期</span>
-                                    </label>
-                                    <label class="checkbox-item">
-                                        <input type="checkbox" value="expired" checked onchange="updateStatusFilter(this)">
-                                        <span>已过期</span>
-                                    </label>
-                                    <label class="checkbox-item">
-                                        <input type="checkbox" value="error" checked onchange="updateStatusFilter(this)">
-                                        <span>无法访问</span>
-                                    </label>
+                                <div class="filter-group">
+                                    <span class="filter-label">搜索:</span>
+                                    <input type="text" class="search-input" id="searchInput" placeholder="搜索域名或机构..." oninput="onSearch(this.value)">
+                                </div>
+
+                                <div class="filter-group">
+                                    <span class="filter-label">状态筛选:</span>
+                                    <div class="checkbox-group">
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" value="valid" checked onchange="updateStatusFilter(this)">
+                                            <span>正常</span>
+                                        </label>
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" value="warning" checked onchange="updateStatusFilter(this)">
+                                            <span>即将过期</span>
+                                        </label>
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" value="expired" checked onchange="updateStatusFilter(this)">
+                                            <span>已过期</span>
+                                        </label>
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" value="invalid" checked onchange="updateStatusFilter(this)">
+                                            <span>未生效</span>
+                                        </label>
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" value="error" checked onchange="updateStatusFilter(this)">
+                                            <span>无法访问</span>
+                                        </label>
+                                        <label class="checkbox-item">
+                                            <input type="checkbox" value="unknown" checked onchange="updateStatusFilter(this)">
+                                            <span>待检查</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="filter-group">
+                                    <span class="filter-label">排序:</span>
+                                    <select class="sort-select" onchange="updateSort(this)">
+                                        <option value="custom-asc">自定义排序</option>
+                                        <option value="created_at-desc">添加时间 (新→旧)</option>
+                                        <option value="created_at-asc">添加时间 (旧→新)</option>
+                                        <option value="expiry_date-desc">到期时间 (远→近)</option>
+                                        <option value="expiry_date-asc">到期时间 (近→远)</option>
+                                        <option value="percentage-desc">剩余比例 (高→低)</option>
+                                        <option value="percentage-asc">剩余比例 (低→高)</option>
+                                        <option value="domain_name-asc">域名 (A→Z)</option>
+                                        <option value="domain_name-desc">域名 (Z→A)</option>
+                                    </select>
+                                </div>
+
+                                <div class="filter-group">
+                                    <span class="filter-label">&nbsp;</span>
+                                    <button class="auto-refresh-toggle" id="autoRefreshBtn" onclick="toggleAutoRefresh()" title="自动刷新证书状态">
+                                        <span class="toggle-dot"></span>
+                                        <span>自动刷新</span>
+                                    </button>
                                 </div>
                             </div>
 
-                            <div class="filter-group">
-                                <span class="filter-label">排序:</span>
-                                <select class="sort-select" onchange="updateSort(this)">
-                                    <option value="custom-asc">自定义排序</option>
-                                    <option value="created_at-desc">添加时间 (新→旧)</option>
-                                    <option value="created_at-asc">添加时间 (旧→新)</option>
-                                    <option value="expiry_date-desc">到期时间 (远→近)</option>
-                                    <option value="expiry_date-asc">到期时间 (近→远)</option>
-                                    <option value="percentage-desc">剩余比例 (高→低)</option>
-                                    <option value="percentage-asc">剩余比例 (低→高)</option>
-                                    <option value="domain_name-asc">域名 (A→Z)</option>
-                                    <option value="domain_name-desc">域名 (Z→A)</option>
-                                </select>
+                            <div class="cards-grid${isEmpty ? ' empty' : ''}" id="domainsGrid">
+                                ${domainsHtml}
                             </div>
-                        </div>
-
-                        <div class="cards-grid${isEmpty ? ' empty' : ''}" id="domainsGrid">
-                            ${domainsHtml}
-                        </div>
                         </div>
                     </main>
                 </div>
@@ -1311,6 +1538,9 @@
             const domainsGrid = document.getElementById('domainsGrid');
 
             if (!domainsGrid) return;
+
+            // 更新统计栏
+            updateStatsBar();
 
             // 更新 cards-grid 的 class
             if (filteredDomains.length === 0) {
@@ -1457,11 +1687,11 @@
                     currentDomains = domains;
                     if (!dashboardInitialized) {
                         renderDashboardFull(domains);
-                        // 页面渲染后，异步触发批量证书检查
-                        setTimeout(() => checkAllDomainsSilent(), 200);
                     } else {
                         updateDomainsGrid();
                     }
+                    // 异步触发批量证书检查（首次和后续加载都触发）
+                    setTimeout(() => checkAllDomainsSilent(), 100);
                 }
             } catch (error) {
                 console.error('Failed to load domains:', error);
@@ -1476,7 +1706,7 @@
         }
 
         async function checkAllDomainsSilent() {
-            """后台静默检查所有域名，更新卡片"""
+            // 后台静默检查所有域名，更新卡片
             try {
                 const response = await fetch(`${API_BASE}/domains/check-all`, { method: 'POST' });
                 if (!response.ok) return;
@@ -1513,6 +1743,30 @@
             sortField = field;
             sortOrder = order;
             updateDomainsGrid();
+        }
+
+        function onSearch(value) {
+            searchQuery = value;
+            updateDomainsGrid();
+        }
+
+        function updateStatsBar() {
+            const statsEl = document.getElementById('statsBar');
+            if (statsEl) {
+                statsEl.innerHTML = renderStatsBar();
+            }
+        }
+
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('autoRefreshBtn');
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+                btn.classList.remove('active');
+            } else {
+                autoRefreshTimer = setInterval(() => checkAllDomainsSilent(), 300000);
+                btn.classList.add('active');
+            }
         }
 
         // 拖拽功能实现
@@ -1835,6 +2089,27 @@
             } else if (path === '/register') {
                 renderRegister();
             } else if (path === '/index' || path === '/') {
+                // 先显示骨架屏，避免白屏
+                document.getElementById('app').innerHTML = `
+                    <div class="dashboard-container">
+                        <nav class="navbar">
+                            <div class="navbar-content">
+                                <div class="navbar-brand">CredMonitor</div>
+                                <div class="navbar-nav">
+                                    <span style="color: var(--gray-600);">欢迎, <span style="font-weight: 500;">${window.username || '用户'}</span></span>
+                                    <a href="/logout" class="nav-link">退出</a>
+                                </div>
+                            </div>
+                        </nav>
+                        <main class="main-content">
+                            <div class="toolbar">
+                                <h1>证书监控</h1>
+                            </div>
+                            <div class="cards-grid" id="domainsGrid">
+                                ${renderSkeleton(4)}
+                            </div>
+                        </main>
+                    </div>`;
                 loadDomains();
                 document.addEventListener('submit', (e) => {
                     if (e.target.id === 'addDomainForm') {
