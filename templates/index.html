@@ -474,7 +474,7 @@
 
         .stats-bar {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 10px;
             margin-bottom: 16px;
         }
@@ -488,9 +488,7 @@
             align-items: baseline;
             gap: 6px;
             transition: box-shadow 0.2s;
-            min-width: 0;
             white-space: nowrap;
-            overflow: hidden;
         }
 
         .stat-card:hover {
@@ -536,7 +534,6 @@
             align-items: center;
             gap: 6px;
             white-space: nowrap;
-            flex-shrink: 0;
         }
 
         .filter-label {
@@ -567,12 +564,12 @@
         }
 
         .search-input {
-            padding: 6px 10px;
+            padding: 6px 8px;
             border: 1px solid var(--gray-300);
             border-radius: 6px;
             font-size: 13px;
             background: white;
-            width: 160px;
+            width: 140px;
         }
 
         .search-input:focus {
@@ -1392,7 +1389,7 @@
                                 </div>
 
                                 <div class="filter-group">
-                                    <span class="filter-label">状态:</span>
+                                    <span class="filter-label">状态</span>
                                     <div class="checkbox-group">
                                         <label class="checkbox-item">
                                             <input type="checkbox" value="valid" checked onchange="updateStatusFilter(this)">
@@ -1400,11 +1397,11 @@
                                         </label>
                                         <label class="checkbox-item">
                                             <input type="checkbox" value="warning" checked onchange="updateStatusFilter(this)">
-                                            <span>即将过期</span>
+                                            <span>临期</span>
                                         </label>
                                         <label class="checkbox-item">
                                             <input type="checkbox" value="expired" checked onchange="updateStatusFilter(this)">
-                                            <span>已过期</span>
+                                            <span>过期</span>
                                         </label>
                                         <label class="checkbox-item">
                                             <input type="checkbox" value="invalid" checked onchange="updateStatusFilter(this)">
@@ -1412,25 +1409,25 @@
                                         </label>
                                         <label class="checkbox-item">
                                             <input type="checkbox" value="error" checked onchange="updateStatusFilter(this)">
-                                            <span>无法访问</span>
+                                            <span>错误</span>
                                         </label>
                                         <label class="checkbox-item">
                                             <input type="checkbox" value="unknown" checked onchange="updateStatusFilter(this)">
-                                            <span>待检查</span>
+                                            <span>待查</span>
                                         </label>
                                     </div>
                                 </div>
 
                                 <div class="filter-group">
-                                    <span class="filter-label">排序:</span>
+                                    <span class="filter-label">排序</span>
                                     <select class="sort-select" onchange="updateSort(this)">
-                                        <option value="custom-asc">自定义排序</option>
-                                        <option value="created_at-desc">添加时间 (新→旧)</option>
-                                        <option value="created_at-asc">添加时间 (旧→新)</option>
-                                        <option value="expiry_date-desc">到期时间 (远→近)</option>
-                                        <option value="expiry_date-asc">到期时间 (近→远)</option>
-                                        <option value="percentage-desc">剩余比例 (高→低)</option>
-                                        <option value="percentage-asc">剩余比例 (低→高)</option>
+                                        <option value="custom-asc">自定义</option>
+                                        <option value="created_at-desc">添加 (新→旧)</option>
+                                        <option value="created_at-asc">添加 (旧→新)</option>
+                                        <option value="expiry_date-desc">到期 (远→近)</option>
+                                        <option value="expiry_date-asc">到期 (近→远)</option>
+                                        <option value="percentage-desc">比例 (高→低)</option>
+                                        <option value="percentage-asc">比例 (低→高)</option>
                                         <option value="domain_name-asc">域名 (A→Z)</option>
                                         <option value="domain_name-desc">域名 (Z→A)</option>
                                     </select>
