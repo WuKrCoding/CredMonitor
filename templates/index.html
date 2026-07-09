@@ -482,13 +482,15 @@
         .stat-card {
             background: white;
             border-radius: 8px;
-            padding: 14px 18px;
+            padding: 10px 14px;
             box-shadow: var(--shadow);
             display: flex;
-            align-items: center;
-            gap: 10px;
+            align-items: baseline;
+            gap: 6px;
             transition: box-shadow 0.2s;
             min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
         }
 
         .stat-card:hover {
@@ -496,37 +498,35 @@
         }
 
         .stat-dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             flex-shrink: 0;
-        }
-
-        .stat-info {
-            display: flex;
-            flex-direction: column;
+            align-self: center;
         }
 
         .stat-count {
-            font-size: 22px;
+            font-size: 16px;
             font-weight: 700;
-            line-height: 1;
+            flex-shrink: 0;
         }
 
         .stat-label {
-            font-size: 12px;
+            font-size: 13px;
             color: var(--gray-600);
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .filter-bar {
             background: white;
-            padding: 12px 16px;
+            padding: 10px 14px;
             border-radius: 8px;
             margin-bottom: 24px;
             box-shadow: var(--shadow);
             display: flex;
             flex-wrap: nowrap;
-            gap: 16px;
+            gap: 12px;
             align-items: center;
             overflow-x: auto;
         }
@@ -534,8 +534,9 @@
         .filter-group {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .filter-label {
@@ -547,31 +548,31 @@
 
         .checkbox-group {
             display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
+            gap: 12px;
+            flex-wrap: nowrap;
         }
 
         .checkbox-item {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 14px;
+            gap: 4px;
+            font-size: 13px;
             cursor: pointer;
         }
 
         .checkbox-item input[type="checkbox"] {
             cursor: pointer;
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
         }
 
         .search-input {
-            padding: 8px 12px;
+            padding: 6px 10px;
             border: 1px solid var(--gray-300);
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 13px;
             background: white;
-            min-width: 200px;
+            width: 160px;
         }
 
         .search-input:focus {
@@ -580,10 +581,10 @@
         }
 
         .sort-select {
-            padding: 8px 12px;
+            padding: 6px 8px;
             border: 1px solid var(--gray-300);
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 13px;
             background: white;
             cursor: pointer;
         }
@@ -1107,11 +1108,9 @@
 
             return items.map(item => `
                 <div class="stat-card">
-                    <div class="stat-dot" style="background: ${item.color};"></div>
-                    <div class="stat-info">
-                        <span class="stat-count">${stats[item.status] || 0}</span>
-                        <span class="stat-label">${item.label}</span>
-                    </div>
+                    <span class="stat-dot" style="background: ${item.color};"></span>
+                    <span class="stat-count">${stats[item.status] || 0}</span>
+                    <span class="stat-label">${item.label}</span>
                 </div>
             `).join('');
         }
