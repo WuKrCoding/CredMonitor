@@ -473,22 +473,26 @@
         }
 
         .stats-bar {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
             margin-bottom: 16px;
+            justify-content: center;
         }
 
         .stat-card {
             background: white;
             border-radius: 8px;
-            padding: 10px 14px;
+            padding: 12px 18px;
             box-shadow: var(--shadow);
             display: flex;
             align-items: baseline;
-            gap: 6px;
+            gap: 8px;
             transition: box-shadow 0.2s;
             white-space: nowrap;
+            flex: 1 1 160px;
+            min-width: 140px;
+            justify-content: center;
         }
 
         .stat-card:hover {
@@ -496,24 +500,22 @@
         }
 
         .stat-dot {
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             flex-shrink: 0;
             align-self: center;
         }
 
         .stat-count {
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 700;
             flex-shrink: 0;
         }
 
         .stat-label {
-            font-size: 13px;
+            font-size: 14px;
             color: var(--gray-600);
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
 
         .filter-bar {
