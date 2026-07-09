@@ -293,13 +293,18 @@
             margin-bottom: 16px;
             flex-wrap: nowrap;
             gap: 8px;
+            min-width: 0;
         }
 
         .domain-name {
             font-size: 18px;
             font-weight: 600;
             color: var(--gray-900);
-            word-break: break-all;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
         }
 
         .domain-badge {
@@ -841,7 +846,6 @@
 
             .domain-name {
                 font-size: 14px;
-                word-break: break-all;
             }
 
             .info-row {
@@ -958,7 +962,6 @@
 
             .domain-name {
                 font-size: 15px;
-                word-break: break-all;
             }
 
             .info-row {
