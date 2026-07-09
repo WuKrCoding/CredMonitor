@@ -265,6 +265,7 @@
             cursor: grab;
             position: relative;
             width: 100%;
+            overflow: hidden;
         }
 
         .card:hover {
@@ -1277,8 +1278,8 @@
             const domainsHtml = !isEmpty ? filteredDomains.map((domain, index) => `
                 <div class="card" data-id="${domain.id}" ${isAdmin ? 'draggable="true"' : ''} data-index="${index}">
                     <div class="card-header">
-                        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                            ${isAdmin ? '<span style="cursor: grab; color: var(--gray-400);">⋮⋮</span>' : ''}
+                        <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; min-width: 0;">
+                            ${isAdmin ? '<span style="cursor: grab; color: var(--gray-400); flex-shrink: 0;">⋮⋮</span>' : ''}
                             <span class="domain-name">${domain.domain_name}</span>
                         </div>
                         <div class="card-actions">
@@ -1497,8 +1498,8 @@
             const domainsHtml = filteredDomains.length > 0 ? filteredDomains.map((domain, index) => `
                 <div class="card" data-id="${domain.id}" ${isAdmin ? 'draggable="true"' : ''} data-index="${index}">
                     <div class="card-header">
-                        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                            ${isAdmin ? '<span style="cursor: grab; color: var(--gray-400);">⋮⋮</span>' : ''}
+                        <div style="display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; min-width: 0;">
+                            ${isAdmin ? '<span style="cursor: grab; color: var(--gray-400); flex-shrink: 0;">⋮⋮</span>' : ''}
                             <span class="domain-name">${domain.domain_name}</span>
                         </div>
                         <div class="card-actions">
