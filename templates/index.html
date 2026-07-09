@@ -289,8 +289,10 @@
         .card-header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
             margin-bottom: 16px;
+            flex-wrap: nowrap;
+            gap: 8px;
         }
 
         .domain-name {
@@ -336,11 +338,13 @@
         .card-actions {
             display: flex;
             gap: 8px;
+            flex-shrink: 0;
         }
 
         .card-actions button {
             padding: 6px 12px;
             font-size: 12px;
+            white-space: nowrap;
         }
 
         .info-row {
@@ -832,9 +836,7 @@
             }
 
             .card-header {
-                flex-direction: column;
                 gap: 6px;
-                align-items: flex-start;
             }
 
             .domain-name {
@@ -951,9 +953,7 @@
             }
 
             .card-header {
-                flex-direction: column;
                 gap: 8px;
-                align-items: flex-start;
             }
 
             .domain-name {
