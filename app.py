@@ -55,10 +55,20 @@ def init_db():
             )
         ''')
 
+        # 兼容性升级：为旧数据库新增 port 和 proxy 列
+        try:
+            cursor.execute('ALTER TABLE domains ADD COLUMN port INTEGER DEFAULT 443')
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute('ALTER TABLE domains ADD COLUMN proxy TEXT DEFAULT NULL')
+        except sqlite3.OperationalError:
+            pass
+
         conn.commit()
 
 
-def check_cert_expiry(domain, target_type='dns', target_value=None):
+def check_cert_expiry(domain, target_type='dns', target_value=None, port=443, proxy=None):
     """检查SSL证书过期时间"""
     try:
         # 确定连接地址
@@ -75,8 +85,40 @@ def check_cert_expiry(domain, target_type='dns', target_value=None):
                 if answers:
                     address = str(answers[0].target).rstrip('.')
 
-        # 创建socket连接
-        sock = socket.create_connection((address, 443), timeout=10)
+        # 如果配置了代理，通过代理连接
+        if proxy:
+            import socks as socks_mod
+            proxy_url = proxy.strip()
+            # 解析代理格式 socks5://host:port 或 http://host:port
+            if '://' in proxy_url:
+                scheme, rest = proxy_url.split('://', 1)
+            else:
+                scheme, rest = 'socks5', proxy_url
+            if ':' in rest:
+                proxy_host, proxy_port_str = rest.rsplit(':', 1)
+                proxy_port = int(proxy_port_str)
+            else:
+                proxy_host = rest
+                proxy_port = 1080
+
+            if scheme in ('socks5', 'socks5h'):
+                sock = socks_mod.socksocket()
+                sock.set_proxy(socks_mod.SOCKS5, proxy_host, proxy_port)
+            elif scheme in ('socks4', 'socks4a'):
+                sock = socks_mod.socksocket()
+                sock.set_proxy(socks_mod.SOCKS4, proxy_host, proxy_port)
+            elif scheme in ('http', 'https'):
+                sock = socks_mod.socksocket()
+                sock.set_proxy(socks_mod.HTTP, proxy_host, proxy_port)
+            else:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+            sock.settimeout(10)
+            sock.connect((address, port))
+        else:
+            # 创建socket连接
+            sock = socket.create_connection((address, port), timeout=10)
+
         context = ssl._create_unverified_context()
 
         # 使用SSL包装socket
@@ -308,6 +350,8 @@ def get_domains():
             'domain_name': domain['domain_name'],
             'target_type': domain['target_type'],
             'target_value': domain['target_value'],
+            'port': domain['port'] if 'port' in domain.keys() else 443,
+            'proxy': domain['proxy'] if 'proxy' in domain.keys() else None,
             'sort_order': domain['sort_order'],
             'created_at': domain['created_at'],
             # 初始状态为 unknown，前端会异步触发检查
@@ -335,9 +379,25 @@ def add_domain():
     domain_name = data.get('domain_name')
     target_type = data.get('target_type', 'dns')
     target_value = data.get('target_value', '')
+    port = data.get('port', 443)
+    proxy = data.get('proxy', None)
 
     if not domain_name:
         return jsonify({'success': False, 'error': '域名不能为空'}), 400
+
+    # 校验 port
+    try:
+        port = int(port)
+        if port < 1 or port > 65535:
+            port = 443
+    except (ValueError, TypeError):
+        port = 443
+
+    # 校验 proxy 格式
+    if proxy and proxy.strip():
+        proxy = proxy.strip()
+    else:
+        proxy = None
 
     domain_name_clean = domain_name.strip().lower()
 
@@ -363,8 +423,8 @@ def add_domain():
         new_order = max_order + 1
 
         cursor.execute(
-            'INSERT INTO domains (domain_name, target_type, target_value, sort_order) VALUES (?, ?, ?, ?)',
-            (domain_name.strip(), target_type, target_value.strip() if target_value else None, new_order)
+            'INSERT INTO domains (domain_name, target_type, target_value, port, proxy, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+            (domain_name.strip(), target_type, target_value.strip() if target_value else None, port, proxy, new_order)
         )
         domain_id = cursor.lastrowid
         conn.commit()
@@ -421,7 +481,7 @@ def check_single_domain(domain_id):
     if not domain:
         return jsonify({'success': False, 'error': '域名不存在'}), 404
 
-    check_result = check_cert_expiry(domain['domain_name'], domain['target_type'], domain['target_value'])
+    check_result = check_cert_expiry(domain['domain_name'], domain['target_type'], domain['target_value'], domain['port'] if 'port' in domain.keys() else 443, domain['proxy'] if 'proxy' in domain.keys() else None)
 
     if check_result['success']:
         expiry_date = check_result['expiry_date']
@@ -520,7 +580,7 @@ def check_all_domains():
 
     results = []
     for domain in domains:
-        check_result = check_cert_expiry(domain['domain_name'], domain['target_type'], domain['target_value'])
+        check_result = check_cert_expiry(domain['domain_name'], domain['target_type'], domain['target_value'], domain['port'] if 'port' in domain.keys() else 443, domain['proxy'] if 'proxy' in domain.keys() else None)
         results.append(_build_check_result(domain, check_result))
 
     return jsonify({'success': True, 'results': results})

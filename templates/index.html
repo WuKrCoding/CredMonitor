@@ -1292,6 +1292,8 @@
                         <span class="info-value">
                             <span class="domain-badge badge-${domain.target_type}">${domain.target_type.toUpperCase()}</span>
                             ${domain.target_value && domain.target_type !== 'dns' ? `<span style="color: var(--gray-600); margin-left: 8px;">${domain.target_value}</span>` : ''}
+                            ${domain.port && domain.port !== 443 ? `<span style="color: var(--gray-600); margin-left: 8px;">:${domain.port}</span>` : ''}
+                            ${domain.proxy ? `<span style="color: var(--gray-600); margin-left: 8px;" title="${domain.proxy}">proxy</span>` : ''}
                         </span>
                     </div>
 
@@ -1462,6 +1464,14 @@
                                 <label for="targetValue" id="targetValueLabel">IP地址</label>
                                 <input type="text" id="targetValue" name="target_value" placeholder="">
                             </div>
+                            <div class="form-group">
+                                <label for="domainPort">端口</label>
+                                <input type="number" id="domainPort" name="port" value="443" min="1" max="65535">
+                            </div>
+                            <div class="form-group">
+                                <label for="domainProxy">代理 (可选)</label>
+                                <input type="text" id="domainProxy" name="proxy" placeholder="socks5://127.0.0.1:1080">
+                            </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" onclick="hideAddModal()">取消</button>
                                 <button type="submit" class="btn btn-primary">添加</button>
@@ -1512,6 +1522,8 @@
                         <span class="info-value">
                             <span class="domain-badge badge-${domain.target_type}">${domain.target_type.toUpperCase()}</span>
                             ${domain.target_value && domain.target_type !== 'dns' ? `<span style="color: var(--gray-600); margin-left: 8px;">${domain.target_value}</span>` : ''}
+                            ${domain.port && domain.port !== 443 ? `<span style="color: var(--gray-600); margin-left: 8px;">:${domain.port}</span>` : ''}
+                            ${domain.proxy ? `<span style="color: var(--gray-600); margin-left: 8px;" title="${domain.proxy}">proxy</span>` : ''}
                         </span>
                     </div>
 
@@ -1893,7 +1905,13 @@
 
             e.preventDefault();
             const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData);
+            const data = {
+                domain_name: formData.get('domain_name'),
+                target_type: formData.get('target_type'),
+                target_value: formData.get('target_value') || '',
+                port: parseInt(formData.get('port')) || 443,
+                proxy: formData.get('proxy') || null,
+            };
 
             const btn = e.target.querySelector('button[type="submit"]');
             const originalText = btn.textContent;

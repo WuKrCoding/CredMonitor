@@ -3,3 +3,4 @@ Werkzeug==3.0.1
 dnspython==2.4.2
 cryptography==41.0.7
 pyOpenSSL==23.3.0
+PySocks==1.7.1
