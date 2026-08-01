@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import ssl
 import socket
+import socks
 import secrets
 import os
 from functools import wraps
@@ -10,6 +11,7 @@ from contextlib import contextmanager
 import dns.resolver
 from datetime import datetime, timezone
 from cryptography import x509
+import traceback
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
@@ -87,7 +89,6 @@ def check_cert_expiry(domain, target_type='dns', target_value=None, port=443, pr
 
         # 如果配置了代理，通过代理连接
         if proxy:
-            import socks as socks_mod
             proxy_url = proxy.strip()
             # 解析代理格式 socks5://host:port 或 http://host:port
             if '://' in proxy_url:
@@ -102,14 +103,14 @@ def check_cert_expiry(domain, target_type='dns', target_value=None, port=443, pr
                 proxy_port = 1080
 
             if scheme in ('socks5', 'socks5h'):
-                sock = socks_mod.socksocket()
-                sock.set_proxy(socks_mod.SOCKS5, proxy_host, proxy_port)
+                sock = socks.socksocket()
+                sock.set_proxy(socks.SOCKS5, proxy_host, proxy_port)
             elif scheme in ('socks4', 'socks4a'):
-                sock = socks_mod.socksocket()
-                sock.set_proxy(socks_mod.SOCKS4, proxy_host, proxy_port)
+                sock = socks.socksocket()
+                sock.set_proxy(socks.SOCKS4, proxy_host, proxy_port)
             elif scheme in ('http', 'https'):
-                sock = socks_mod.socksocket()
-                sock.set_proxy(socks_mod.HTTP, proxy_host, proxy_port)
+                sock = socks.socksocket()
+                sock.set_proxy(socks.HTTP, proxy_host, proxy_port)
             else:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -203,7 +204,6 @@ def check_cert_expiry(domain, target_type='dns', target_value=None, port=443, pr
         }
 
     except Exception as e:
-        import traceback
         return {
             'success': False,
             'error': str(e),
