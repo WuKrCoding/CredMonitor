@@ -364,6 +364,7 @@
         .info-label {
             color: var(--gray-600);
             flex-shrink: 0;
+            margin-right: 8px;
         }
 
         .info-value {
@@ -1290,7 +1291,7 @@
                     <div class="info-row">
                         <span class="info-label">连接方式</span>
                         <span class="info-value">
-                            <span><span class="domain-badge badge-${domain.target_type}">${domain.target_type.toUpperCase()}</span>${domain.target_value && domain.target_type !== 'dns' ? `<span style="color: var(--gray-600);">${domain.target_value}</span>` : ''}${domain.port && domain.port !== 443 ? `<span style="color: var(--gray-600);">:${domain.port}</span>` : ''}</span>${domain.proxy ? `<span style="color: var(--gray-600);" title="${domain.proxy}">proxy</span>` : ''}
+                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;"><span class="domain-badge badge-${domain.target_type}">${domain.target_type.toUpperCase()}</span>${domain.target_value && domain.target_type !== 'dns' ? `<span style="color: var(--gray-600);">${domain.target_value}</span>` : ''}${domain.port && domain.port !== 443 ? `<span style="color: var(--gray-600);">:${domain.port}</span>` : ''}</span>${domain.proxy ? `<span style="color: var(--gray-600);" title="${domain.proxy}">proxy</span>` : ''}
                         </span>
                     </div>
 
@@ -1517,7 +1518,7 @@
                     <div class="info-row">
                         <span class="info-label">连接方式</span>
                         <span class="info-value">
-                            <span><span class="domain-badge badge-${domain.target_type}">${domain.target_type.toUpperCase()}</span>${domain.target_value && domain.target_type !== 'dns' ? `<span style="color: var(--gray-600);">${domain.target_value}</span>` : ''}${domain.port && domain.port !== 443 ? `<span style="color: var(--gray-600);">:${domain.port}</span>` : ''}</span>${domain.proxy ? `<span style="color: var(--gray-600);" title="${domain.proxy}">proxy</span>` : ''}
+                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;"><span class="domain-badge badge-${domain.target_type}">${domain.target_type.toUpperCase()}</span>${domain.target_value && domain.target_type !== 'dns' ? `<span style="color: var(--gray-600);">${domain.target_value}</span>` : ''}${domain.port && domain.port !== 443 ? `<span style="color: var(--gray-600);">:${domain.port}</span>` : ''}</span>${domain.proxy ? `<span style="color: var(--gray-600);" title="${domain.proxy}">proxy</span>` : ''}
                         </span>
                     </div>
 
