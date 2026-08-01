@@ -411,7 +411,8 @@ def add_domain():
             WHERE LOWER(TRIM(domain_name)) = ?
             AND target_type = ?
             AND (target_value = ? OR (target_value IS NULL AND ? = ''))
-        ''', (domain_name_clean, target_type, target_value_clean, target_value_clean))
+            AND port = ?
+        ''', (domain_name_clean, target_type, target_value_clean, target_value_clean, port))
         existing = cursor.fetchone()
 
         if existing:
